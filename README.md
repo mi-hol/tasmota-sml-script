@@ -79,23 +79,40 @@ Den Befehl müsst ihr ggf. auf euren Ort anpassen! https://tasmotatimezone.com  
 So sieht das Google Chart Script in Natura aus:  
 ![screencapture-192-168-178-31-2024-12-28-15_41_15](https://github.com/user-attachments/assets/cc1d8a8f-62c9-4609-839c-d90ff3d4c089)
 
-### Debuggen oder Daten loggen
-Falls ihr vielleicht im Script irgendwas loggen wollt (Zustände oder Werte in eine Datei mit Zeitstempel schreiben), dann gibt es eine schöne einfache Methode via Script. Erstellt dazu einfach ein neuen #Sub, da wo bereits Subs sind, ansonsten ist es egal wo:
+### Daten loggen (z.b zur Fehlersuche)
+Falls ihr vielleicht im Script irgendwas loggen wollt (Zustände oder Werte in eine Datei mit Zeitstempel schreiben), dann gibt es eine schöne einfache Methode via Script. Erstellt dazu einfach folgende neue #Sub, da wo bereits Subs sind, ansonsten ist es egal wo:
 ```
-#log(str)
-tmp=fo("log.txt" a)
-if tmp>=0 {
-	res=fw(cts(tstamp 1) tmp)
-	str="\t"+str+"\n"
-	res=fw(str tmp)
-	fc(tmp)
+; add in section >B
+str="log.txt"
+log_open(str)
+...
+; add in section #sub
+#log_open(str)
+lfh=fo(str a)
+if lfh>=0 {
+	; log file opened successfully
+else {
+	; error: log file can not be opened!
+}
+}
+
+#log_wrt(lfh, lstr)
+if lfh>=0 {
+	lwr=fw(cts(tstamp 1) lfh)
+	lstr="\t"+str+"\n"
+	lwr=fw(str lfh)
+}
+
+#log_close(lfh)
+{
+	fc(lfh)
 }
 ```
-Ihr braucht dafür zwei neue Variablen, die ihr ganz oben im Script deklarieren müsst, falls sie noch nicht existieren:
+Ihr braucht dafür folgende *neue Variablen*, die ihr ganz oben im Script deklarieren müsst, sie dürfen noch nicht existieren:
 ```
-tmp=0
-res=0
-str=""
+lfh=0 ;log file handle
+lwr=0 ;log_wrt number of bytes written to file
+lstr="" ;log string
 ```
 Jetzt könnt ihr irgendwo im Script z.B. ein Wert in die Datei "log.txt" schreiben lassen inkl. Zeitstempel:
 ```

@@ -83,7 +83,8 @@ void bkWork() {
     }
     if (h[0] == 0) f = -1;                   // no HOST=: as if there were no file
     if (f >= 0) {
-        tasmInfo(0, t);
+//        tasmInfo(0, t); // 0 = MQTT topic
+        tasmInfo(4, t); // 4 =  device_name = host name of ESP
         e = ftpOpen(h, u, p);
         if (e == 0) {
             ftpMkdir(d);                 // refused if it exists - fine

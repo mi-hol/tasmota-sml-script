@@ -14,11 +14,13 @@
 // /ftp.cfg: HOST=, USER=, PW=, DIR= each on a line of its own, // comments
 // allowed (mi-hol, PR #92). Without HOST= the backup fails with -11.
 
-char sml_vers[] = "18.10.2026 13:20";  // build.html: version in the .tcb header and index.json
+char sml_vers[] = "23.10.2026 19:20";  // build.html: version in the .tcb header and index.json
 
 persist int bk_res;            // 0 never, 1 ok, 2 failed
 persist int bk_code;           // last error
-persist int bk_d; persist int bk_m; persist int bk_y;
+persist int bk_d;              // last backup day
+persist int bk_m;              // last backup month 
+persist int bk_y;              // last backup year
 persist int bk_hm;             // hhmm
 int bk_go;                     // Backup button
 int bk_now;                    // start at the next tick
@@ -29,7 +31,7 @@ int bk_ack;                    // seconds the button still shows the result
 
 // Value of "KEY=" at a line start, up to the line end, spaces trimmed.
 // pos = strFind of the key; anywhere else than a line start it does not count.
-void bkVal(byte d[], byte s[], int pos, int max) {
+void getKeyValue(byte d[], byte s[], int pos, int max) {
     d[0] = 0;
     if (pos < 0) return;
     if (pos > 0 && s[pos - 1] != '\n') return;
@@ -63,7 +65,12 @@ int SelectFile(byte n[]) {
 // VM needs the firmware fix that lets a worker use arrays > 16 elements
 // (tasmota-sml-images, 12.10.2026) - without it this dies with BOUNDS.
 void bkWork() {
-    byte cfg[512]; byte host[40]; byte user[40]; byte pw[40]; byte d[128];
+    byte cfg[512]; 
+    byte host[40]; 
+    byte user[40]; 
+    byte pw[40]; 
+    byte dir[128];
+// todo: self documenting names
     byte t[40]; byte n[48]; byte l[52]; byte r[180];
     int err = -11;
     int cnt = 0;
@@ -73,10 +80,10 @@ void bkWork() {
         fileClose(f);
         if (k < 0) k = 0;
         cfg[k] = 0;
-        bkVal(host, cfg, strFind(cfg, "HOST="), 40);
-        bkVal(user, cfg, strFind(cfg, "USER="), 40);
-        bkVal(pw, cfg, strFind(cfg, "PW="), 40);
-        bkVal(d, cfg, strFind(cfg, "DIR="), 100);
+        getKeyValue(host, cfg, strFind(cfg, "HOST="), 40);
+        getKeyValue(user, cfg, strFind(cfg, "USER="), 40);
+        getKeyValue(pw, cfg, strFind(cfg, "PW="), 40);
+        getKeyValue(dir, cfg, strFind(cfg, "DIR="), 100);
         int q = strFind(host, "://");           // "ftp://ip" or "http://ip/" written by mistake
         if (q >= 0) {
             strSub(t, host, q + 3, 39);
@@ -84,8 +91,8 @@ void bkWork() {
         }
         q = strlen(host) - 1;
         if (q > 0 && host[q] == '/') host[q] = 0;
-        q = strlen(d) - 1;
-        if (q > 0 && d[q] == '/') d[q] = 0;
+        q = strlen(dir) - 1;
+        if (q > 0 && dir[q] == '/') dir[q] = 0;
     }
     if (host[0] == 0) f = -1;                   // no HOST=: as if there were no file
     if (f >= 0) {
@@ -93,22 +100,22 @@ void bkWork() {
         tasmInfo(4, t); // 4 =  device_name = host name of ESP
         err = ftpOpen(host, user, pw);
         if (err == 0) {
-            ftpMkdir(d);                 // refused if it exists - fine
-            strcat(d, "/");
-            strcat(d, t);
-            ftpMkdir(d);
+            ftpMkdir(dir);                 // refused if it exists - fine
+            strcat(dir, "/");
+            strcat(dir, t);
+            ftpMkdir(dir);
             int wd = tasm_wday - 1;      // Tasmota: 1 = Sunday
             if (wd < 1) wd = 7;
             if (bk_man == 1) wd = 0;
             sprintf(n, "/%d", wd);
-            strcat(d, n);
-            ftpMkdir(d);
+            strcat(dir, n);
+            ftpMkdir(dir);
             int dh = fileOpenDir("/");
             if (dh >= 0) {
                 while (err >= 0 && fileReadDir(dh, n)) {
                     if (SelectFile(n)) {
                         sprintf(l, "/%s", n);
-                        sprintf(r, "%s/%s", d, n);
+                        sprintf(r, "%s/%s", dir, n);
                         err = ftpPut(r, l, 0);
                         if (err >= 0) cnt = cnt + 1;
                     }

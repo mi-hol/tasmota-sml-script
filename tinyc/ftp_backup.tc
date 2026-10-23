@@ -2,19 +2,20 @@
 // @info: https://ottelo9.github.io/tasmota-sml-script/sml/#ftp
 // @order: 31
 // ftp_backup.tc — copies the data and configuration of TinyC and programs to an FTP server
-// (FRITZ!NAS, Synology, ...) every night at 00:10 and on the Backup button.
-// Runs in its own slot next to the SML program, so devices without actived backup don't consume RAM! 
+// (FRITZ!NAS, Synology, ...) every night at 00:10 and on press of the Backup button.
+// Runs in its own slot next to the SML program, so devices without activated backup don't consume RAM! 
 //
 // Docs: https://ottelo9.github.io/tasmota-sml-script/sml/#ftp
 //
-// Sends every *.pvs, *.cfg and *.def from the file system (not its own .pvs,
-// ftp.cfg or the firmware's tinyc.cfg) to
-// <folder>/<MQTT topic>/<1..7>/ (weekday of the run, Monday = 1), so a week
-// of copies is kept; the Backup button uses 0 instead.
-// /ftp.cfg: HOST=, USER=, PW=, DIR= each on a line of its own, // comments
-// allowed (mi-hol, PR #92). Without HOST= the backup fails with -11.
+// Sends every *.pvs, *.cfg and *.def from the file system to
+// <folder>/<host name>/<1..7>/ (weekday of the run, Monday = 1), so a week
+// of copies is kept; the manual Backup button uses folder 0 instead.
+// /ftp.cfg: with the KEY values:
+// HOST=, USER=, PW=, DIR=, // comments
+// each KEY= must be starting on a line of its own!
+// Without HOST= the backup fails with error -11.
 
-char sml_vers[] = "23.10.2026 19:20";  // build.html: version in the .tcb header and index.json
+char sml_vers[] = "23.10.2026 19:55";  // build.html: version in the .tcb header and index.json
 
 persist int bk_res;            // 0 never, 1 ok, 2 failed
 persist int bk_code;           // last error
@@ -30,8 +31,8 @@ int bk_man;                    // 1 = started by the button
 int bk_ack;                    // seconds the button still shows the result
 
 // Value of "KEY=" at a line start, up to the line end, spaces trimmed.
-// pos = strFind of the key; anywhere else than a line start it does not count.
-void getKeyValue(byte d[], byte s[], int pos, int max) {
+// pos = strFind of the key; anywhere else than at line start is invalid!
+void GetKeyValue(byte d[], byte s[], int pos, int max) {
     d[0] = 0;
     if (pos < 0) return;
     if (pos > 0 && s[pos - 1] != '\n') return;
@@ -80,10 +81,10 @@ void bkWork() {
         fileClose(f);
         if (k < 0) k = 0;
         cfg[k] = 0;
-        getKeyValue(host, cfg, strFind(cfg, "HOST="), 40);
-        getKeyValue(user, cfg, strFind(cfg, "USER="), 40);
-        getKeyValue(pw, cfg, strFind(cfg, "PW="), 40);
-        getKeyValue(dir, cfg, strFind(cfg, "DIR="), 100);
+        GetKeyValue(host, cfg, strFind(cfg, "HOST="), 40);
+        GetKeyValue(user, cfg, strFind(cfg, "USER="), 40);
+        GetKeyValue(pw, cfg, strFind(cfg, "PW="), 40);
+        GetKeyValue(dir, cfg, strFind(cfg, "DIR="), 100);
         int q = strFind(host, "://");           // "ftp://ip" or "http://ip/" written by mistake
         if (q >= 0) {
             strSub(t, host, q + 3, 39);

@@ -28,29 +28,30 @@ int bk_man;                    // 1 = started by the button
 int bk_ack;                    // seconds the button still shows the result
 
 // Value of "KEY=" at a line start, up to the line end, spaces trimmed.
-// p = strFind of the key; anywhere else than a line start it does not count.
-void bkVal(byte d[], byte s[], int p, int max) {
+// pos = strFind of the key; anywhere else than a line start it does not count.
+void bkVal(byte d[], byte s[], int pos, int max) {
     d[0] = 0;
-    if (p < 0) return;
-    if (p > 0 && s[p - 1] != '\n') return;
-    while (s[p] != '=') p = p + 1;
-    p = p + 1;
-    while (s[p] == ' ') p = p + 1;
+    if (pos < 0) return;
+    if (pos > 0 && s[pos - 1] != '\n') return;
+    while (s[pos] != '=') pos = pos + 1;
+    pos = pos + 1;
+    while (s[pos] == ' ') pos = pos + 1;
     int i = 0;
-    while (s[p] != 0 && s[p] != '\n' && s[p] != '\r' && i < max - 1) {
-        d[i] = s[p];
+    while (s[pos] != 0 && s[pos] != '\n' && s[pos] != '\r' && i < max - 1) {
+        d[i] = s[pos];
         i = i + 1;
-        p = p + 1;
+        pos = pos + 1;
     }
     while (i > 0 && d[i - 1] == ' ') i = i - 1;
     d[i] = 0;
 }
 
-int bkWant(byte n[]) {
+int SelectFile(byte n[]) {
 // exclude files
 //    if (strcmp(n, "ftp_backup.pvs") == 0) return 0;
 //    if (strcmp(n, "tinyc.cfg") == 0) return 0;
 // include files
+// todo: select only trailing file extension, currenly each file with partial match would be selected!!
     if (strFind(n, ".pvs") > 0) return 1;
     if (strFind(n, ".def") > 0) return 1;
     if (strFind(n, ".cfg") > 0) return 1;
@@ -62,9 +63,9 @@ int bkWant(byte n[]) {
 // VM needs the firmware fix that lets a worker use arrays > 16 elements
 // (tasmota-sml-images, 12.10.2026) - without it this dies with BOUNDS.
 void bkWork() {
-    byte cfg[512]; byte h[40]; byte u[40]; byte p[40]; byte d[128];
+    byte cfg[512]; byte host[40]; byte user[40]; byte pw[40]; byte d[128];
     byte t[40]; byte n[48]; byte l[52]; byte r[180];
-    int e = -11;
+    int err = -11;
     int cnt = 0;
     int f = fileOpen("/ftp.cfg", 0);
     if (f >= 0) {
@@ -72,26 +73,26 @@ void bkWork() {
         fileClose(f);
         if (k < 0) k = 0;
         cfg[k] = 0;
-        bkVal(h, cfg, strFind(cfg, "HOST="), 40);
-        bkVal(u, cfg, strFind(cfg, "USER="), 40);
-        bkVal(p, cfg, strFind(cfg, "PW="), 40);
+        bkVal(host, cfg, strFind(cfg, "HOST="), 40);
+        bkVal(user, cfg, strFind(cfg, "USER="), 40);
+        bkVal(pw, cfg, strFind(cfg, "PW="), 40);
         bkVal(d, cfg, strFind(cfg, "DIR="), 100);
-        int q = strFind(h, "://");           // "ftp://ip" or "http://ip/" written by mistake
+        int q = strFind(host, "://");           // "ftp://ip" or "http://ip/" written by mistake
         if (q >= 0) {
-            strSub(t, h, q + 3, 39);
-            strcpy(h, t);
+            strSub(t, host, q + 3, 39);
+            strcpy(host, t);
         }
-        q = strlen(h) - 1;
-        if (q > 0 && h[q] == '/') h[q] = 0;
+        q = strlen(host) - 1;
+        if (q > 0 && host[q] == '/') host[q] = 0;
         q = strlen(d) - 1;
         if (q > 0 && d[q] == '/') d[q] = 0;
     }
-    if (h[0] == 0) f = -1;                   // no HOST=: as if there were no file
+    if (host[0] == 0) f = -1;                   // no HOST=: as if there were no file
     if (f >= 0) {
 //        tasmInfo(0, t); // 0 = MQTT topic
         tasmInfo(4, t); // 4 =  device_name = host name of ESP
-        e = ftpOpen(h, u, p);
-        if (e == 0) {
+        err = ftpOpen(host, user, pw);
+        if (err == 0) {
             ftpMkdir(d);                 // refused if it exists - fine
             strcat(d, "/");
             strcat(d, t);
@@ -104,12 +105,12 @@ void bkWork() {
             ftpMkdir(d);
             int dh = fileOpenDir("/");
             if (dh >= 0) {
-                while (e >= 0 && fileReadDir(dh, n)) {
-                    if (bkWant(n)) {
+                while (err >= 0 && fileReadDir(dh, n)) {
+                    if (SelectFile(n)) {
                         sprintf(l, "/%s", n);
                         sprintf(r, "%s/%s", d, n);
-                        e = ftpPut(r, l, 0);
-                        if (e >= 0) cnt = cnt + 1;
+                        err = ftpPut(r, l, 0);
+                        if (err >= 0) cnt = cnt + 1;
                     }
                 }
                 fileClose(dh);
@@ -119,13 +120,13 @@ void bkWork() {
     }
     bk_d = tasm_day; bk_m = tasm_month; bk_y = tasm_year;
     bk_hm = tasm_hour * 100 + tasm_minute;
-    if (e >= 0) {
+    if (err >= 0) {
         bk_res = 1;
         addLog("ftpbk: %d files", cnt);
     } else {
         bk_res = 2;
-        bk_code = e;
-        addLog("ftpbk: error %d", e);
+        bk_code = err;
+        addLog("ftpbk: error %d", err);
     }
     if (bk_man == 1) bk_ack = 5;
     bk_busy = 0;

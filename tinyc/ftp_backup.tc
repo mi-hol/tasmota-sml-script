@@ -1,10 +1,11 @@
 // @name: FTP-Backup
 // @info: https://ottelo9.github.io/tasmota-sml-script/sml/#ftp
 // @order: 31
-// ftp_backup.tc — copies the data of the SML programs to an FTP server
+// ftp_backup.tc — copies the data and configuration of TinyC and programs to an FTP server
 // (FRITZ!NAS, Synology, ...) every night at 00:10 and on the Backup button.
-// Runs in its own slot next to the SML program, so devices without a backup
-// pay no RAM for it. Docs: https://ottelo9.github.io/tasmota-sml-script/sml/#ftp
+// Runs in its own slot next to the SML program, so devices without actived backup don't consume RAM! 
+//
+// Docs: https://ottelo9.github.io/tasmota-sml-script/sml/#ftp
 //
 // Sends every *.pvs, *.cfg and *.def from the file system (not its own .pvs,
 // ftp.cfg or the firmware's tinyc.cfg) to

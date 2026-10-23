@@ -65,7 +65,7 @@ int SelectFile(byte n[]) {
 // spawnTask worker: FTP blocks, and here the VM lets go meanwhile. Its own
 // VM needs the firmware fix that lets a worker use arrays > 16 elements
 // (tasmota-sml-images, 12.10.2026) - without it this dies with BOUNDS.
-void bkWork() {
+void ftpbkWorker() {
     byte cfg[512]; 
     byte host[40]; 
     byte user[40]; 
@@ -101,15 +101,18 @@ void bkWork() {
         tasmInfo(4, t); // 4 =  device_name = host name of ESP
         err = ftpOpen(host, user, pw);
         if (err == 0) {
+            addLog("ftpbk: ftpMkdir dir: %s", dir);
             ftpMkdir(dir);                 // refused if it exists - fine
             strcat(dir, "/");
             strcat(dir, t);
+            addLog("ftpbk: ftpMkdir dir: %s", dir);
             ftpMkdir(dir);
             int wd = tasm_wday - 1;      // Tasmota: 1 = Sunday
             if (wd < 1) wd = 7;
             if (bk_man == 1) wd = 0;
             sprintf(n, "/%d", wd);
             strcat(dir, n);
+            addLog("ftpbk: ftpMkdir dir: %s", dir);
             ftpMkdir(dir);
             int dh = fileOpenDir("/");
             if (dh >= 0) {
@@ -117,6 +120,7 @@ void bkWork() {
                     if (SelectFile(n)) {
                         sprintf(l, "/%s", n);
                         sprintf(r, "%s/%s", dir, n);
+                        addLog("ftpbk: ftpPut dir: %s", r);
                         err = ftpPut(r, l, 0);
                         if (err >= 0) cnt = cnt + 1;
                     }
@@ -144,7 +148,7 @@ void EverySecond() {
     if (bk_ack > 0) bk_ack = bk_ack - 1;
     if (bk_busy) {
         // The worker ends with bk_busy = 0. Gone without it = it crashed.
-        if (taskRunning("bkWork") == 0) {
+        if (taskRunning("ftpbkWorker") == 0) {
             bk_busy = 0;
             bk_res = 2;
             bk_code = -13;
@@ -163,7 +167,7 @@ void EverySecond() {
     if (bk_now == 0) return;
     bk_now = 0;
     bk_busy = 1;
-    if (spawnTask("bkWork", 8) < 0) {
+    if (spawnTask("ftpbkWorker", 8) < 0) {
         bk_busy = 0;
         bk_res = 2;
         bk_code = -12;

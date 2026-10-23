@@ -46,13 +46,14 @@ void bkVal(byte d[], byte s[], int p, int max) {
 }
 
 int bkWant(byte n[]) {
-//    if (strcmp(n, "ftp_backup.pvs") == 0 || strcmp(n, "tinyc.cfg") == 0) return 0;
 // exclude files
 //    if (strcmp(n, "ftp_backup.pvs") == 0) return 0;
+//    if (strcmp(n, "tinyc.cfg") == 0) return 0;
 // include files
     if (strFind(n, ".pvs") > 0) return 1;
     if (strFind(n, ".def") > 0) return 1;
     if (strFind(n, ".cfg") > 0) return 1;
+// ignore all other files
     return 0;
 }
 
@@ -123,7 +124,7 @@ void bkWork() {
     } else {
         bk_res = 2;
         bk_code = e;
-        addLog("ftpbk: err %d", e);
+        addLog("ftpbk: error %d", e);
     }
     if (bk_man == 1) bk_ack = 5;
     bk_busy = 0;

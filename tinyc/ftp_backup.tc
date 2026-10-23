@@ -46,10 +46,13 @@ void bkVal(byte d[], byte s[], int p, int max) {
 }
 
 int bkWant(byte n[]) {
-    if (strcmp(n, "ftp_backup.pvs") == 0 || strcmp(n, "tinyc.cfg") == 0) return 0;
+//    if (strcmp(n, "ftp_backup.pvs") == 0 || strcmp(n, "tinyc.cfg") == 0) return 0;
+// exclude files
+    if (strcmp(n, "ftp_backup.pvs") == 0) return 0;
+// include files
     if (strFind(n, ".pvs") > 0) return 1;
     if (strFind(n, ".def") > 0) return 1;
-    if (strFind(n, ".cfg") > 0 && strcmp(n, "ftp.cfg") != 0) return 1;
+    if (strFind(n, ".cfg") > 0) return 1;
     return 0;
 }
 
